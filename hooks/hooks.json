@@ -1,0 +1,33 @@
+{
+  "description": "Attach CQB executor and circuit-breaker guidance to normal Codex tasks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/session-context.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\session-context.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1200,
+            "statusMessage": "Loading CQB routing policy"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/hooks/session-context.mjs\"",
+            "commandWindows": "node \"${PLUGIN_ROOT}\\hooks\\session-context.mjs\"",
+            "timeout": 5,
+            "additionalContextLimit": 1200
+          }
+        ]
+      }
+    ]
+  }
+}

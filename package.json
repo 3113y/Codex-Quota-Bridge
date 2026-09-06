@@ -1,0 +1,27 @@
+{
+  "name": "codex-quota-bridge",
+  "version": "0.1.0",
+  "description": "Local reasoning-offload and quota-optimization companion for Codex",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "cqb": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.json",
+    "demo": "node scripts/demo.mjs",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "package:plugin": "node scripts/package-plugin.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

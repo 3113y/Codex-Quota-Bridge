@@ -1,0 +1,34 @@
+reviewer:
+  provider: chatgpt_plus
+  browser_provider: local
+  preferred_model: sol
+  conversation_url: https://chatgpt.com/c/cqb-reviewer
+  expected_window_title: CQB Reviewer
+  allowed_processes: [chrome, msedge]
+routing:
+  confidence_threshold: 0.65
+  max_local_failures: 2
+  max_reviews_per_task: 2
+  require_new_evidence: true
+automation:
+  mode: assisted
+  auto_open: true
+  auto_focus: true
+  auto_paste: true
+  auto_send: false
+verification:
+  tests: true
+  typecheck: true
+  lint: true
+  build: true
+  diff_review: true
+  commands:
+    tests: pnpm test
+    typecheck: pnpm typecheck
+    lint: pnpm lint
+    build: pnpm build
+limits:
+  max_executor_rounds: 12
+  max_auto_reviews_per_task: 2
+storage:
+  state_directory: cqb

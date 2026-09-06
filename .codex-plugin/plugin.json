@@ -1,0 +1,32 @@
+{
+  "name": "codex-quota-bridge",
+  "version": "0.1.0",
+  "description": "Route difficult Codex engineering decisions through compact, safety-gated expert review packets.",
+  "author": {
+    "name": "Codex Quota Bridge contributors"
+  },
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "reasoning",
+    "review",
+    "quota"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Codex Quota Bridge",
+    "shortDescription": "Offload difficult engineering judgment through compact expert reviews.",
+    "longDescription": "Adds a reasoning circuit breaker, compact review packets, local task state, and safety-gated ChatGPT Plus reviewer routing to Codex.",
+    "developerName": "Codex Quota Bridge contributors",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use CQB when this task reaches its reasoning circuit breaker.",
+      "Show the current CQB task and review status."
+    ]
+  }
+}
