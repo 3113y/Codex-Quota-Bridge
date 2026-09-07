@@ -2,7 +2,7 @@
 
 [English](integration-decision.md) | [简体中文](integration-decision.zh-CN.md)
 
-**Status:** Accepted for the MVP  
+**Status:** Accepted for v1.0.0
 **Date:** 2026-09-05
 
 ## Decision
@@ -10,12 +10,12 @@
 CQB is packaged as a Codex plugin composed of:
 
 - a Codex Skill that teaches the Executor when to work locally, when to stop retrying, and how to consume reviewer advice;
-- a bundled local STDIO MCP server that exposes the stable CQB tool surface and owns persisted task state;
+- a bundled local STDIO MCP server that exposes the stable CQB tool surface, graphical permission settings, and persisted task state;
 - trusted Codex lifecycle hooks that attach session identity and CQB routing guidance to normal Codex tasks;
 - a reviewer bridge whose Safe mode can request the Codex desktop built-in Browser, with a verified Chrome/Edge fallback for CLI;
 - isolated Assisted and Autopilot adapters guarded by target verification, payload validation, consent, and per-task send limits.
 
-The MCP server is the lightweight CQB daemon for the MVP. Codex starts it as a background child process when the plugin is enabled, so normal use does not require a visible terminal. Runtime state is durable under the configured CQB state directory and survives MCP process restarts.
+The MCP server is the lightweight CQB daemon for v1.0.0. Codex starts it as a background child process when the plugin is enabled, so normal use does not require a visible terminal. Runtime state is durable under the configured CQB state directory and survives MCP process restarts.
 
 ## Why this is the native fit
 
@@ -42,18 +42,22 @@ The Codex App Server is retained behind an adapter boundary for future work. It 
 3. The circuit breaker accepts escalation only when policy and evidence requirements are met.
 4. CQB persists a compact, hashed review request.
 5. The request detects the original `user_input` language and adds an explicit response-language directive, falling back to the task goal for legacy callers.
-6. Safe mode copies the request and either returns a host `browserAction` for `@Browser` or opens the configured `https://chatgpt.com/...` conversation without sending input.
-7. On first use, Codex desktop automatically invokes `@Browser`, searches for the dedicated reviewer conversation, opens an existing match, or proposes creating `CQB Reviewer` before persisting the user-confirmed `/c/...` URL through `cqb_bind_reviewer`; CLI uses `cqb setup-reviewer` and Windows UI Automation.
-8. Assisted mode verifies a browser PID/HWND, exact ChatGPT conversation URL, and the focused ChatGPT composer through Windows UI Automation before pasting; the user sends it.
-9. Autopilot performs the same checks and sends only after explicit persisted consent and within the automatic-send limit.
-10. While the task is `WAITING_FOR_REVIEW`, the user supplies copied reviewer text explicitly to the MCP tool. The Executor validates all advice against the repository before editing.
-11. CQB accepts `DONE` only after its own verification runner executes the configured commands and inspects Git state.
+6. The graphical settings panel persists the preferred reviewer model, and each packet tells the reviewer which model to use when available; the active ChatGPT model remains a property of the reviewer conversation.
+7. Safe mode copies the request and either returns a host `browserAction` for `@Browser` or opens the configured `https://chatgpt.com/...` conversation without sending input.
+8. On first use, Codex desktop automatically invokes `@Browser`, searches for the dedicated reviewer conversation, opens an existing match, or proposes creating `CQB Reviewer` before persisting the user-confirmed `/c/...` URL through `cqb_bind_reviewer`; CLI uses `cqb setup-reviewer` and Windows UI Automation.
+9. Assisted mode verifies a browser PID/HWND, exact ChatGPT conversation URL, and the focused ChatGPT composer through Windows UI Automation before pasting; the user sends it.
+10. Autopilot performs the same checks and sends only after explicit persisted consent and within the automatic-send limit.
+11. While the task is `WAITING_FOR_REVIEW`, the user supplies copied reviewer text explicitly to the MCP tool. The Executor validates all advice against the repository before editing.
+12. CQB accepts `DONE` only after its own verification runner executes the configured commands and inspects Git state.
 
 ## Stable tool surface
 
-The MVP exposes these tools:
+v1.0.0 exposes these tools:
 
 - `cqb_status`
+- `cqb_settings`
+- `cqb_set_mode`
+- `cqb_set_model`
 - `cqb_should_escalate`
 - `cqb_request_review`
 - `cqb_bind_reviewer`
@@ -77,11 +81,11 @@ Administrative capabilities are exposed through the optional `cqb` CLI. Transpor
 
 ## Platform constraints
 
-- Windows is the implemented local automation platform for the MVP.
+- Windows is the implemented local automation platform for v1.0.0.
 - ChatGPT model selection remains a property of the configured reviewer conversation. CQB records `preferred_model: sol` as user intent but does not claim it can verify or switch the active ChatGPT model through native window APIs.
 - Safe review return is user-mediated: the user copies the reviewer response and Codex supplies it explicitly to CQB while waiting.
 - Hooks supplied by an installed plugin require user trust before Codex runs them.
-- A future tray process can own notifications and continuous clipboard waiting; the MVP daemon lifecycle is managed by Codex through the bundled MCP server.
+- A future tray process can own notifications and continuous clipboard waiting; the v1.0.0 daemon lifecycle is managed by Codex through the bundled MCP server.
 
 ## Official references
 

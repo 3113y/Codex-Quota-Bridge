@@ -44,6 +44,15 @@ pnpm demo
 
 重启 ChatGPT 桌面应用或 Codex CLI，然后新建任务。当 Codex 提示时，请检查并信任插件的 Hook 定义。已安装的插件能力会由新任务加载。
 
+## 从 npm 安装 CLI
+
+已发布的 v1.0.0 包会全局安装 `cqb` 命令：
+
+```powershell
+npm install -g codex-quota-bridge@1.0.0
+cqb settings --config "$env:CODEX_HOME\cqb\config.yaml"
+```
+
 ## 绑定审查会话
 
 在 Codex 桌面版中，CQB 默认使用内置 Browser。首次发起审查请求时会自动调用 `@Browser` 并搜索专用审查会话。找到匹配会话后，Codex 会直接打开；如果不存在，Codex 会提出创建名为 `CQB Reviewer` 的新会话，并通过 `cqb_bind_reviewer` MCP 工具保存确认后的 `/c/...` URL。内置 Browser 使用独立配置，因此按提示在其中登录。CQB 只验证 HTTPS ChatGPT 会话 URL，并将提供方保存为 `builtin`；不会读取 Cookie 或抓取页面。首次绑定不需要输入 Shell 命令或 CQB 专用提示词。Codex CLI 或无法使用 `@Browser` 时，使用本地回退流程：

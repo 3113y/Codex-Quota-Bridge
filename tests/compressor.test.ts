@@ -63,6 +63,15 @@ test('adds an explicit Simplified Chinese response-language directive', () => {
   assert.match(packet.markdown, /Respond in Simplified Chinese \(zh-CN\)/);
 });
 
+test('includes the configured reviewer model in the packet', () => {
+  const packet = buildReviewPacket({
+    preferredModel: 'terra', goal: 'g', currentState: 's', relevantFiles: [], relevantSymbols: [], evidence: [], errors: [], attempts: [],
+    diffSummary: 'd', constraints: [], question: 'q',
+  });
+  assert.match(packet.markdown, /# Reviewer Model/);
+  assert.match(packet.markdown, /Preferred ChatGPT reviewer model: terra/);
+});
+
 test('adds an explicit English response-language directive', () => {
   const packet = buildReviewPacket({
     userInput: 'Detect the user input language and ask the CQB expert to respond in English',

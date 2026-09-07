@@ -1,6 +1,6 @@
 {
   "name": "codex-quota-bridge",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Route difficult Codex engineering decisions through compact, safety-gated expert review packets.",
   "author": {
     "name": "Codex Quota Bridge contributors"

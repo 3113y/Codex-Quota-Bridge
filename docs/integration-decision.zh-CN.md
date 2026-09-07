@@ -2,7 +2,7 @@
 
 [English](integration-decision.md) | [简体中文](integration-decision.zh-CN.md)
 
-**状态：** 已采纳用于 MVP  
+**状态：** 已采纳用于 v1.0.0
 **日期：** 2026-09-05
 
 ## 决策
@@ -10,12 +10,12 @@
 CQB 以 Codex 插件形式交付，包含：
 
 - 一个指导执行者何时本地工作、何时停止重试以及如何使用审查建议的 Codex Skill；
-- 一个提供稳定 CQB 工具接口并管理持久化任务状态的本地 STDIO MCP 服务器；
+- 一个提供稳定 CQB 工具接口、图形化权限设置并管理持久化任务状态的本地 STDIO MCP 服务器；
 - 为常规 Codex 任务附加会话标识和 CQB 路由指引的可信生命周期 Hook；
 - 一个审查桥，其中 Safe 模式可请求 Codex 桌面版内置 Browser，并为 CLI 保留经过验证的 Chrome/Edge 回退；
 - 由目标验证、载荷验证、用户授权和单任务发送上限保护的独立 Assisted 与 Autopilot 适配器。
 
-MCP 服务器是 MVP 阶段的轻量 CQB 守护进程。插件启用后，Codex 会将其作为后台子进程启动，因此日常使用无需可见终端。运行时状态持久化在配置的 CQB 状态目录中，并能在 MCP 进程重启后恢复。
+MCP 服务器是 v1.0.0 的轻量 CQB 守护进程。插件启用后，Codex 会将其作为后台子进程启动，因此日常使用无需可见终端。运行时状态持久化在配置的 CQB 状态目录中，并能在 MCP 进程重启后恢复。
 
 ## 为什么这是原生集成方式
 
@@ -42,18 +42,22 @@ Codex App Server 保留在适配器边界之后，供后续扩展使用。它是
 3. 仅当策略与证据要求均满足时，熔断器才允许升级。
 4. CQB 持久化经过压缩和哈希绑定的审查请求。
 5. 审查请求会检测原始 `user_input` 的语言并加入明确的回复语言指令；旧调用缺少该字段时回退到任务目标。
-6. Safe 模式复制请求，并返回供 `@Browser` 执行的宿主 `browserAction`，或打开配置的 `https://chatgpt.com/...` 会话但不发送输入。
-7. 首次使用时，Codex 桌面版自动调用 `@Browser`，搜索专用审查会话，打开已有匹配会话，或在创建 `CQB Reviewer` 后通过 `cqb_bind_reviewer` 保存用户确认的 `/c/...` URL；CLI 使用 `cqb setup-reviewer` 和 Windows UI Automation。
-8. Assisted 模式在粘贴前通过 Windows UI Automation 验证浏览器 PID/HWND、精确 ChatGPT 会话 URL 和已聚焦的编辑框；消息由用户发送。
-9. Autopilot 执行相同检查，并且仅在明确授权已持久化且未超过自动发送上限时发送。
-10. 任务处于 `WAITING_FOR_REVIEW` 时，用户将复制的审查文本显式传给 MCP 工具；执行者在编辑前根据仓库验证所有建议。
-11. 仅当 CQB 自身的验证运行器执行配置命令并检查 Git 状态后，才接受 `DONE`。
+6. 图形化设置面板会持久化首选 reviewer 模型，每个评审包都会提示 reviewer 在可用时使用该模型；实际 ChatGPT 模型仍由 reviewer 会话中的选择决定。
+7. Safe 模式复制请求，并返回供 `@Browser` 执行的宿主 `browserAction`，或打开配置的 `https://chatgpt.com/...` 会话但不发送输入。
+8. 首次使用时，Codex 桌面版自动调用 `@Browser`，搜索专用审查会话，打开已有匹配会话，或在创建 `CQB Reviewer` 后通过 `cqb_bind_reviewer` 保存用户确认的 `/c/...` URL；CLI 使用 `cqb setup-reviewer` 和 Windows UI Automation。
+9. Assisted 模式在粘贴前通过 Windows UI Automation 验证浏览器 PID/HWND、精确 ChatGPT 会话 URL 和已聚焦的编辑框；消息由用户发送。
+10. Autopilot 执行相同检查，并且仅在明确授权已持久化且未超过自动发送上限时发送。
+11. 任务处于 `WAITING_FOR_REVIEW` 时，用户将复制的审查文本显式传给 MCP 工具；执行者在编辑前根据仓库验证所有建议。
+12. 仅当 CQB 自身的验证运行器执行配置命令并检查 Git 状态后，才接受 `DONE`。
 
 ## 稳定工具接口
 
-MVP 提供以下工具：
+v1.0.0 提供以下工具：
 
 - `cqb_status`
+- `cqb_settings`
+- `cqb_set_mode`
+- `cqb_set_model`
 - `cqb_should_escalate`
 - `cqb_request_review`
 - `cqb_bind_reviewer`
@@ -77,11 +81,11 @@ MVP 提供以下工具：
 
 ## 平台约束
 
-- Windows 是 MVP 已实现的本地自动化平台。
+- Windows 是 v1.0.0 已实现的本地自动化平台。
 - ChatGPT 模型选择由配置的审查会话决定。CQB 将 `preferred_model: sol` 记录为用户意图，但不宣称能通过原生窗口 API 验证或切换当前 ChatGPT 模型。
 - Safe 模式的审查返回由用户参与：用户复制审查响应，Codex 在等待期间将其显式传给 CQB。
 - Codex 运行已安装插件提供的 Hook 前需要用户信任。
-- 后续可由托盘进程负责通知和持续剪贴板等待；MVP 的守护进程生命周期由 Codex 通过内置 MCP 服务器管理。
+- 后续可由托盘进程负责通知和持续剪贴板等待；v1.0.0 的守护进程生命周期由 Codex 通过内置 MCP 服务器管理。
 
 ## 官方参考
 

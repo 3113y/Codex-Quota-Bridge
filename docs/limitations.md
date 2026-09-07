@@ -1,11 +1,11 @@
 # Current Limitations
 
-- The local CQB daemon is the plugin-managed STDIO MCP process. A separate tray process and continuous background clipboard watcher are not part of this MVP.
+- The local CQB daemon is the plugin-managed STDIO MCP process. A separate tray process and continuous background clipboard watcher are outside v1.0.0.
 - Safe review return is user-mediated: copy the reviewer response, then let Codex pass that explicit text through `cqb_get_review`.
 - Assisted and Autopilot target Chrome or Edge. Windows UI Automation verifies the configured ChatGPT URL and composer focus, but it does not attest the signed-in account or active ChatGPT model.
 - The built-in Browser provider is currently Safe-mode host orchestration: Codex desktop must fulfill the returned `browserAction` with `@Browser`; Assisted and Autopilot use the local provider.
 - Sol selection occurs in the dedicated ChatGPT conversation. CQB does not switch or attest the selected model.
-- The MVP does not scrape ChatGPT, read cookies, or use the OpenAI API.
+- v1.0.0 does not scrape ChatGPT, read cookies, or use the OpenAI API.
 - Windows is the implemented automation platform. Core routing, persistence, compression, and MCP behavior are portable Node.js code.
 - Token counts and compression ratios are estimates. CQB does not report exact quota savings.
 - Codex hook trust is controlled by Codex. The user must review and trust plugin hooks before automatic lifecycle context is active.

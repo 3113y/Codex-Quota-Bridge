@@ -1,11 +1,25 @@
 import { copyFile, mkdir, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { AUTOPILOT_CONSENT_STATEMENT } from '../automation/permissions.js';
-import type { CqbConfig } from './schema.js';
+import { SUPPORTED_REVIEWER_MODELS, type AutomationMode, type CqbConfig, type ReviewerModel } from './schema.js';
 import { loadConfig } from './loader.js';
 
 const scalar = (value: string) => JSON.stringify(value);
 const list = (values: string[]) => `[${values.map(scalar).join(', ')}]`;
+
+async function persistConfig(path: string, config: CqbConfig): Promise<CqbConfig> {
+  const absolute = resolve(path);
+  await mkdir(dirname(absolute), { recursive: true });
+  const temporary = `${absolute}.${process.pid}.tmp`;
+  await writeFile(temporary, serializeConfig(config), 'utf8');
+  try { await rename(temporary, absolute); }
+  catch (error) {
+    if (!['EEXIST', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+    await copyFile(temporary, absolute);
+    await unlink(temporary).catch(() => undefined);
+  }
+  return config;
+}
 
 export function serializeConfig(config: CqbConfig): string {
   const consent = config.automation.consent;
@@ -60,16 +74,23 @@ export async function updateConsent(path: string, action: 'grant' | 'revoke', st
     delete config.automation.consent;
     Object.assign(config.automation, { mode: 'safe', autoFocus: false, autoPaste: false, autoSend: false });
   }
-  await mkdir(dirname(absolute), { recursive: true });
-  const temporary = `${absolute}.${process.pid}.tmp`;
-  await writeFile(temporary, serializeConfig(config), 'utf8');
-  try { await rename(temporary, absolute); }
-  catch (error) {
-    if (!['EEXIST', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
-    await copyFile(temporary, absolute);
-    await unlink(temporary).catch(() => undefined);
-  }
-  return config;
+  return persistConfig(absolute, config);
+}
+
+export async function updateAutomationMode(path: string, mode: AutomationMode): Promise<CqbConfig> {
+  const config = await loadConfig(resolve(path));
+  if (mode === 'safe') Object.assign(config.automation, { mode, autoFocus: false, autoPaste: false, autoSend: false });
+  if (mode === 'assisted') Object.assign(config.automation, { mode, autoFocus: true, autoPaste: true, autoSend: false });
+  if (mode === 'autopilot') Object.assign(config.automation, { mode, autoFocus: true, autoPaste: true, autoSend: true });
+  return persistConfig(path, config);
+}
+
+export async function updateReviewerModel(path: string, model: string): Promise<CqbConfig> {
+  if (!SUPPORTED_REVIEWER_MODELS.includes(model as ReviewerModel)) throw new Error(`Unsupported reviewer model: ${model}`);
+  const absolute = resolve(path);
+  const config = await loadConfig(absolute);
+  config.reviewer.preferredModel = model;
+  return persistConfig(absolute, config);
 }
 
 export async function updateReviewerBinding(path: string, conversationUrl: string, expectedWindowTitle: string, browserProvider: CqbConfig['reviewer']['browserProvider'] = 'local'): Promise<CqbConfig> {
@@ -78,14 +99,5 @@ export async function updateReviewerBinding(path: string, conversationUrl: strin
   config.reviewer.conversationUrl = conversationUrl;
   config.reviewer.expectedWindowTitle = expectedWindowTitle;
   config.reviewer.browserProvider = browserProvider;
-  await mkdir(dirname(absolute), { recursive: true });
-  const temporary = `${absolute}.${process.pid}.tmp`;
-  await writeFile(temporary, serializeConfig(config), 'utf8');
-  try { await rename(temporary, absolute); }
-  catch (error) {
-    if (!['EEXIST', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
-    await copyFile(temporary, absolute);
-    await unlink(temporary).catch(() => undefined);
-  }
-  return config;
+  return persistConfig(absolute, config);
 }

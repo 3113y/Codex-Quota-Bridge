@@ -12,7 +12,7 @@ test('plugin manifest references packaged components that exist', async () => {
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
 
   assert.equal(manifest.name, 'codex-quota-bridge');
-  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
+  assert.match(manifest.version, /^\d+\.\d+\.\d+(?:\+[0-9A-Za-z.-]+)?$/);
   assert.equal(manifest.skills, './skills/');
   assert.equal(manifest.mcpServers, './.mcp.json');
 
@@ -82,6 +82,8 @@ test('session hook injects concise CQB routing context', async () => {
   assert.match(result.hookSpecificOutput.additionalContext, /CQB/);
   assert.match(result.hookSpecificOutput.additionalContext, /@Browser/);
   assert.match(result.hookSpecificOutput.additionalContext, /cqb_bind_reviewer/);
+  assert.match(result.hookSpecificOutput.additionalContext, /explicit_review=true/);
+  assert.match(result.hookSpecificOutput.additionalContext, /do not ask the user to repeat/);
   assert.doesNotMatch(result.hookSpecificOutput.additionalContext, /session-1/);
 });
 

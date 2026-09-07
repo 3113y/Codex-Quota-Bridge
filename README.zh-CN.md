@@ -26,9 +26,11 @@ flowchart TD
 
 该插件包含一个路由 Skill、本地 STDIO MCP 服务器和 Codex 生命周期 Hook。运行时状态、审查产物和事件均持久化在本地。守护进程由 Codex 作为后台 MCP 子进程管理，因此日常使用无需单独打开终端。
 
-## MVP 功能
+## v1.0.0 功能
 
-- 七个稳定的 CQB 工具：`cqb_status`、`cqb_should_escalate`、`cqb_request_review`、`cqb_bind_reviewer`、`cqb_review_status`、`cqb_get_review` 和 `cqb_report_result`。
+- CQB 工具覆盖任务路由、图形化权限设置、评审绑定、响应导入和验证。
+- `cqb_settings` 会打开 Safe/Assisted/Autopilot 图形化面板；`cqb_set_mode` 会持久化所选模式，并让 Autopilot 始终经过明确授权。
+- 同一面板支持通过 `cqb_set_model` 保存首选 ChatGPT reviewer 模型；CQB 会将该偏好加入每个评审包，实际会话模型仍由 reviewer 会话中的选择决定。
 - 明确、可持久化的任务状态及经过验证的状态转换。
 - 两次失败熔断、咨询次数限制、执行轮次限制、重复失败检测及新证据要求。
 - 具备内容边界、常见秘密脱敏、大小估算和 SHA-256 载荷绑定的审查包。
@@ -38,6 +40,17 @@ flowchart TD
 - 仅在 `WAITING_FOR_REVIEW` 状态下显式导入审查响应。
 - 独立执行配置命令并检查 Git 状态的完成门禁。
 - 完整的模拟验收流程。
+
+## 从 npm 安装
+
+v1.0.0 包名为 `codex-quota-bridge`，并提供 `cqb` 命令：
+
+```powershell
+npm install -g codex-quota-bridge@1.0.0
+cqb settings --config "$env:CODEX_HOME\cqb\config.yaml"
+```
+
+Codex 插件安装请继续使用下方介绍的插件市场流程。
 
 ## 快速开始
 
@@ -64,7 +77,7 @@ pnpm demo
 
 ## 常规与困难任务
 
-常规工作始终在 Codex 内完成。遇到困难任务时，CQB Skill 会登记状态、记录具体失败方案，并由熔断器判断现有证据是否足以升级。通过的审查请求会复制到剪贴板，并在 Safe 模式返回内置 Browser 操作。复制审查响应后，由 Codex 将文本传给 `cqb_get_review`；CQB 仅在等待状态下接收响应，并要求 Codex 在编辑前验证建议。
+常规工作始终在 Codex 内完成。遇到困难任务时，CQB Skill 会登记状态、记录具体失败方案，并由熔断器判断现有证据是否足以升级。当用户明确要求使用 CQB 或进行专家评审时，Skill 会立即进入评审路径，不要求用户反复强调。通过的审查请求会复制到剪贴板，并在 Safe 模式返回内置 Browser 操作。复制审查响应后，由 Codex 将文本传给 `cqb_get_review`；CQB 仅在等待状态下接收响应，并要求 Codex 在编辑前验证建议。
 
 ## 自动化模式
 

@@ -1,8 +1,10 @@
 import type { CqbService } from '../core/service.js';
+import { SUPPORTED_REVIEWER_MODELS } from '../config/schema.js';
+import { SETTINGS_RESOURCE_URI, settingsWidgetHtml } from './ui.js';
 
 interface JsonRpcRequest { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown> }
 interface JsonRpcResponse { jsonrpc: '2.0'; id: string | number | null; result?: unknown; error?: { code: number; message: string } }
-type ServiceLike = Pick<CqbService, 'status' | 'shouldEscalate' | 'requestReview' | 'bindReviewer' | 'reviewStatus' | 'getReview' | 'reportResult'>;
+type ServiceLike = Pick<CqbService, 'status' | 'shouldEscalate' | 'requestReview' | 'bindReviewer' | 'reviewStatus' | 'getReview' | 'reportResult' | 'settings' | 'setAutomationMode' | 'setReviewerModel'>;
 interface InputSchema {
   type: 'object' | 'string' | 'number' | 'integer' | 'boolean' | 'array';
   properties?: Record<string, InputSchema>;
@@ -22,6 +24,9 @@ const relevantFileSchema = objectSchema({ path: requiredText, relevance: require
 export const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18'] as const;
 
 export const toolDefinitions = [
+  { name: 'cqb_settings', description: 'Open the CQB graphical settings panel for Safe, Assisted, and Autopilot modes.', inputSchema: objectSchema({}), _meta: { ui: { resourceUri: SETTINGS_RESOURCE_URI, prefersBorder: true } } },
+  { name: 'cqb_set_mode', description: 'Change the CQB automation permission mode. Autopilot requires an explicit confirmation from the graphical settings panel.', inputSchema: objectSchema({ mode: { type: 'string' }, confirm_autopilot: { type: 'boolean' } }, ['mode']) },
+  { name: 'cqb_set_model', description: `Persist the preferred ChatGPT reviewer model (${SUPPORTED_REVIEWER_MODELS.join(', ')}). The active model remains controlled by the reviewer conversation.`, inputSchema: objectSchema({ model: { type: 'string', minLength: 1 } }, ['model']) },
   { name: 'cqb_status', description: 'Create or restore local CQB task state without escalating; resume a paused task only with explicit user approval.', inputSchema: objectSchema({ task_id: requiredText, goal: requiredText, workspace_root: requiredText, resume: { type: 'boolean' } }, ['goal', 'workspace_root']) },
   { name: 'cqb_should_escalate', description: 'Evaluate the CQB reasoning circuit breaker using concrete failure evidence.', inputSchema: objectSchema({ task_id: requiredText, confidence: { type: 'number', minimum: 0, maximum: 1 }, failures: { type: 'integer', minimum: 0 }, reason: requiredText, evidence: textArray, explicit_review: { type: 'boolean' }, architecture_judgment: { type: 'boolean' }, risky_cross_cutting: { type: 'boolean' } }, ['task_id', 'confidence', 'failures', 'reason', 'evidence']) },
   { name: 'cqb_request_review', description: 'Create, persist, validate, and route a compact expert review request. Codex desktop uses the built-in Browser by default; set host_browser to false only when using the local browser fallback.', inputSchema: objectSchema({ task_id: requiredText, user_input: text, goal: requiredText, current_state: requiredText, relevant_files: { type: 'array', items: relevantFileSchema }, relevant_symbols: textArray, evidence: textArray, errors: textArray, attempts: textArray, diff_summary: text, constraints: textArray, question: requiredText, host_browser: { type: 'boolean' } }, ['task_id', 'goal', 'current_state', 'question']) },
@@ -86,6 +91,12 @@ function relevantFiles(value: unknown): Array<{ path: string; relevance: string;
 
 async function callTool(name: string, args: Record<string, unknown>, service: ServiceLike): Promise<unknown> {
   switch (name) {
+    case 'cqb_settings': return service.settings();
+    case 'cqb_set_mode': {
+      if (!['safe', 'assisted', 'autopilot'].includes(args.mode as string)) throw new Error('mode must be safe, assisted, or autopilot');
+      return service.setAutomationMode(args.mode as 'safe' | 'assisted' | 'autopilot', args.confirm_autopilot === true);
+    }
+    case 'cqb_set_model': return service.setReviewerModel(requiredString(args, 'model'));
     case 'cqb_status': return service.status({
       ...(typeof args.task_id === 'string' ? { taskId: args.task_id } : {}),
       goal: requiredString(args, 'goal'),
@@ -115,7 +126,11 @@ export async function handleJsonRpc(request: JsonRpcRequest, service: ServiceLik
     const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(requestedVersion as typeof SUPPORTED_PROTOCOL_VERSIONS[number])
       ? requestedVersion
       : SUPPORTED_PROTOCOL_VERSIONS[0];
-    return { jsonrpc: '2.0', id, result: { protocolVersion, capabilities: { tools: { listChanged: false } }, serverInfo: { name: 'codex-quota-bridge', version: '0.1.0' } } };
+    return { jsonrpc: '2.0', id, result: { protocolVersion, capabilities: { tools: { listChanged: false }, resources: {} }, serverInfo: { name: 'codex-quota-bridge', version: '1.0.0' } } };
+  }
+  if (request.method === 'resources/read') {
+    if (request.params?.uri !== SETTINGS_RESOURCE_URI) return { jsonrpc: '2.0', id, error: { code: -32602, message: 'Unknown UI resource' } };
+    return { jsonrpc: '2.0', id, result: { contents: [{ uri: SETTINGS_RESOURCE_URI, mimeType: 'text/html;profile=mcp-app', text: settingsWidgetHtml, _meta: { ui: { prefersBorder: true } } }] } };
   }
   if (request.method === 'tools/list') return { jsonrpc: '2.0', id, result: { tools: toolDefinitions } };
   if (request.method !== 'tools/call') return request.id === undefined ? undefined : { jsonrpc: '2.0', id, error: { code: -32601, message: 'Method not found' } };

@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseConfig } from '../src/config/loader.js';
-import { updateConsent } from '../src/config/writer.js';
+import { updateAutomationMode, updateConsent, updateReviewerModel } from '../src/config/writer.js';
 import { AUTOPILOT_CONSENT_STATEMENT } from '../src/automation/permissions.js';
 
 test('configuration parser maps documented snake-case settings', () => {
@@ -73,4 +73,24 @@ test('consent grant and revoke persist a parseable configuration', async () => {
   const revoked = parseConfig(await readFile(path, 'utf8'));
   assert.equal(revoked.automation.mode, 'safe');
   assert.equal(revoked.automation.consent, undefined);
+});
+
+test('automation mode changes persist the matching permission envelope', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'cqb-mode-'));
+  const path = resolve(root, 'config.yaml');
+  await writeFile(path, await readFile(resolve('config.example.yaml'), 'utf8'), 'utf8');
+  const assisted = await updateAutomationMode(path, 'assisted');
+  assert.deepEqual({ mode: assisted.automation.mode, focus: assisted.automation.autoFocus, paste: assisted.automation.autoPaste, send: assisted.automation.autoSend }, { mode: 'assisted', focus: true, paste: true, send: false });
+  const safe = await updateAutomationMode(path, 'safe');
+  assert.deepEqual({ mode: safe.automation.mode, focus: safe.automation.autoFocus, paste: safe.automation.autoPaste, send: safe.automation.autoSend }, { mode: 'safe', focus: false, paste: false, send: false });
+});
+
+test('reviewer model changes persist and reject unsupported models', async () => {
+  const root = await mkdtemp(resolve(tmpdir(), 'cqb-model-'));
+  const path = resolve(root, 'config.yaml');
+  await writeFile(path, await readFile(resolve('config.example.yaml'), 'utf8'), 'utf8');
+  const updated = await updateReviewerModel(path, 'terra');
+  assert.equal(updated.reviewer.preferredModel, 'terra');
+  assert.equal(parseConfig(await readFile(path, 'utf8')).reviewer.preferredModel, 'terra');
+  await assert.rejects(() => updateReviewerModel(path, 'gpt-unknown'), /unsupported reviewer model/i);
 });

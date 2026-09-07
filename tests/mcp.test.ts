@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { handleJsonRpc, toolDefinitions } from '../src/mcp/protocol.js';
+import { SETTINGS_RESOURCE_URI } from '../src/mcp/ui.js';
 
 const fakeService = {
   async status(input: unknown) { return { state: 'EXECUTING', input }; },
@@ -10,12 +11,27 @@ const fakeService = {
   async reviewStatus() { return { state: 'WAITING_FOR_REVIEW' }; },
   async getReview() { return { advice: 'review' }; },
   async reportResult() { return { status: 'done' }; },
+  settings() { return { mode: 'safe' }; },
+  async setAutomationMode(mode: string) { return { mode }; },
+  async setReviewerModel(model: string) { return { preferred_model: model }; },
 };
 
 test('MCP exposes the stable CQB tools', () => {
   assert.deepEqual(toolDefinitions.map((tool) => tool.name), [
-    'cqb_status', 'cqb_should_escalate', 'cqb_request_review', 'cqb_bind_reviewer', 'cqb_review_status', 'cqb_get_review', 'cqb_report_result',
+    'cqb_settings', 'cqb_set_mode', 'cqb_set_model', 'cqb_status', 'cqb_should_escalate', 'cqb_request_review', 'cqb_bind_reviewer', 'cqb_review_status', 'cqb_get_review', 'cqb_report_result',
   ]);
+});
+
+test('MCP exposes the graphical settings resource and mode tool', async () => {
+  const resource = await handleJsonRpc({ jsonrpc: '2.0', id: 10, method: 'resources/read', params: { uri: SETTINGS_RESOURCE_URI } }, fakeService);
+  const content = (resource?.result as { contents: Array<{ mimeType: string; text: string }> }).contents[0];
+  assert.equal(content.mimeType, 'text/html;profile=mcp-app');
+  assert.match(content.text, /CQB 权限模式/);
+  assert.match(content.text, /ChatGPT Reviewer 模型/);
+  const called = await handleJsonRpc({ jsonrpc: '2.0', id: 11, method: 'tools/call', params: { name: 'cqb_set_mode', arguments: { mode: 'assisted' } } }, fakeService);
+  assert.equal((called?.result as { structuredContent: { mode: string } }).structuredContent.mode, 'assisted');
+  const model = await handleJsonRpc({ jsonrpc: '2.0', id: 12, method: 'tools/call', params: { name: 'cqb_set_model', arguments: { model: 'luna' } } }, fakeService);
+  assert.equal((model?.result as { structuredContent: { preferred_model: string } }).structuredContent.preferred_model, 'luna');
 });
 
 test('MCP exposes a reviewer binding tool for host Browser initialization', async () => {
@@ -28,6 +44,7 @@ test('MCP initializes and dispatches a valid tool call', async () => {
   assert.equal(initialized?.id, 1);
   assert.equal(initialized?.jsonrpc, '2.0');
   assert.equal((initialized?.result as { serverInfo: { name: string } }).serverInfo.name, 'codex-quota-bridge');
+  assert.deepEqual((initialized?.result as { capabilities: { resources: object } }).capabilities.resources, {});
   const called = await handleJsonRpc({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'cqb_status', arguments: { goal: 'g', workspace_root: 'C:\\repo' } } }, fakeService);
   assert.equal((called?.result as { structuredContent: { state: string } }).structuredContent.state, 'EXECUTING');
   assert.equal('taskId' in ((called?.result as { structuredContent: { input: object } }).structuredContent.input), false);

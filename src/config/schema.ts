@@ -1,5 +1,7 @@
 export type AutomationMode = 'safe' | 'assisted' | 'autopilot';
 export type ReviewerBrowserProvider = 'builtin' | 'local';
+export const SUPPORTED_REVIEWER_MODELS = ['astra', 'sol', 'terra', 'luna'] as const;
+export type ReviewerModel = typeof SUPPORTED_REVIEWER_MODELS[number];
 
 export interface AutopilotConsent {
   granted: boolean;

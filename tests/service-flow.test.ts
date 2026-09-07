@@ -69,7 +69,9 @@ test('mocked difficult task completes through one expert review and verification
   assert.equal(requested.task.state, 'WAITING_FOR_REVIEW');
   assert.equal(requested.route.outcome, 'prepared');
   assert.ok(requested.metrics.compression_ratio >= 0 && requested.metrics.compression_ratio <= 1);
-  assert.match((await readFile(join(root, 'tasks', 'demo-task', 'review-request.md'), 'utf8')), /Respond in English \(en\)/);
+  const reviewRequest = await readFile(join(root, 'tasks', 'demo-task', 'review-request.md'), 'utf8');
+  assert.match(reviewRequest, /Respond in English \(en\)/);
+  assert.match(reviewRequest, /Preferred ChatGPT reviewer model: sol/);
 
   const received = await service.getReview('demo-task', { response: '# Decision\n\nSerialize dequeue by job id.' });
   assert.equal(received.task.state, 'APPLYING_REVIEW');

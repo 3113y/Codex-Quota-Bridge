@@ -44,6 +44,15 @@ The installer builds CQB, creates `build\marketplace\.agents\plugins\marketplace
 
 Restart the ChatGPT desktop app or Codex CLI and start a new task. Review the plugin's hook definitions and trust them when Codex prompts. Installed plugin capabilities are loaded by new tasks.
 
+## Install the CLI from npm
+
+The published v1.0.0 package installs the `cqb` command globally:
+
+```powershell
+npm install -g codex-quota-bridge@1.0.0
+cqb settings --config "$env:CODEX_HOME\cqb\config.yaml"
+```
+
 ## Bind the reviewer conversation
 
 For Codex desktop, CQB uses the built-in Browser by default. The first review request automatically invokes `@Browser` and searches for the dedicated reviewer conversation. When a matching conversation exists, Codex opens it; otherwise it proposes creating a new conversation named `CQB Reviewer` and persists the confirmed `/c/...` URL through the `cqb_bind_reviewer` MCP tool. The built-in Browser uses its own profile, so sign in there when prompted. CQB validates the HTTPS ChatGPT conversation URL and stores the provider as `builtin`; it does not read cookies or scrape the page. No shell command or CQB-specific prompt is required for this one-time binding. For Codex CLI, or when `@Browser` is unavailable, use the local fallback:

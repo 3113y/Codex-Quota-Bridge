@@ -26,9 +26,11 @@ flowchart TD
 
 The plugin bundles one routing Skill, a local STDIO MCP server, and Codex lifecycle hooks. Runtime state, review artifacts, and events are persisted locally. The daemon is managed as a background MCP child process by Codex, so normal use does not require a separate terminal.
 
-## MVP capabilities
+## v1.0.0 capabilities
 
-- Seven stable CQB tools: `cqb_status`, `cqb_should_escalate`, `cqb_request_review`, `cqb_bind_reviewer`, `cqb_review_status`, `cqb_get_review`, and `cqb_report_result`.
+- CQB tools for task routing, graphical permission settings, reviewer binding, response import, and verification.
+- The `cqb_settings` tool opens a graphical Safe/Assisted/Autopilot panel; `cqb_set_mode` persists the selected mode and keeps Autopilot behind explicit consent.
+- The same panel stores the preferred ChatGPT reviewer model through `cqb_set_model`; CQB includes that preference in each review packet, while the active model remains selected in the reviewer conversation.
 - Explicit persistent task states and validated transitions.
 - A two-failure circuit breaker, consultation limits, round limits, repeated-failure detection, and a new-evidence requirement.
 - Review packets with bounded content, common-secret redaction, size estimates, and SHA-256 payload binding.
@@ -38,6 +40,17 @@ The plugin bundles one routing Skill, a local STDIO MCP server, and Codex lifecy
 - Explicit reviewer-response import only while `WAITING_FOR_REVIEW`.
 - A completion gate that independently runs configured commands and inspects Git state.
 - A complete mocked acceptance flow.
+
+## Install from npm
+
+The v1.0.0 package is published as `codex-quota-bridge` and provides the `cqb` command:
+
+```powershell
+npm install -g codex-quota-bridge@1.0.0
+cqb settings --config "$env:CODEX_HOME\cqb\config.yaml"
+```
+
+For Codex plugin installation, use the bundled plugin marketplace flow described below.
 
 ## Quick start
 
@@ -64,7 +77,7 @@ See [Windows installation](docs/windows-installation.md) for the complete setup 
 
 ## Normal and difficult tasks
 
-Routine work stays inside Codex. On a difficult task, the CQB Skill registers state, records concrete failed approaches, and asks the circuit breaker whether the evidence justifies escalation. An accepted review request is copied to the clipboard and the configured ChatGPT conversation is opened in Safe mode. Copy the reviewer response, then let Codex pass that text to `cqb_get_review`; CQB accepts it only from the waiting state and instructs Codex to verify the advice before editing.
+Routine work stays inside Codex. On a difficult task, the CQB Skill registers state, records concrete failed approaches, and asks the circuit breaker whether the evidence justifies escalation. When the user explicitly requests CQB or an expert review, the Skill enters the review path immediately without requiring repeated prompts. An accepted review request is copied to the clipboard and the configured ChatGPT conversation is opened in Safe mode. Copy the reviewer response, then let Codex pass that text to `cqb_get_review`; CQB accepts it only from the waiting state and instructs Codex to verify the advice before editing.
 
 ## Automation modes
 

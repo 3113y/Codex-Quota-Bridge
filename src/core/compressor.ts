@@ -2,6 +2,7 @@ import { containsPotentialSecret, redactText } from '../logging/events.js';
 
 export interface ReviewPacketInput {
   userInput?: string;
+  preferredModel?: string;
   goal: string;
   currentState: string;
   relevantFiles: Array<{ path: string; relevance: string; excerpt?: string }>;
@@ -43,7 +44,7 @@ export function buildReviewPacket(input: ReviewPacketInput, limits: CompressionL
     ? 'Respond in Simplified Chinese (zh-CN), matching the language of the user input.'
     : 'Respond in English (en), matching the language of the user input.';
   const content = [
-    ['Response Language', languageDirective, 1], ['Goal', input.goal, 1], ['Current State', input.currentState, 1], ['Relevant Files', list(files, limits.maxItemChars), 1],
+    ['Response Language', languageDirective, 1], ['Reviewer Model', input.preferredModel ? `Preferred ChatGPT reviewer model: ${input.preferredModel}. Select it in the reviewer conversation when available.` : 'Use the configured reviewer model when available.', 1], ['Goal', input.goal, 1], ['Current State', input.currentState, 1], ['Relevant Files', list(files, limits.maxItemChars), 1],
     ['Relevant Symbols', list(input.relevantSymbols, limits.maxItemChars), 1], ['Evidence', list(input.evidence, limits.maxItemChars), 2],
     ['Errors', list(input.errors, limits.maxItemChars), 2], ['Attempts', list(input.attempts, limits.maxItemChars), 1],
     ['Current Diff', input.diffSummary, 1], ['Constraints', list(input.constraints, limits.maxItemChars), 1.5], ['Question', input.question, 2],

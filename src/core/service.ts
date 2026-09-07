@@ -1,4 +1,4 @@
-import type { CqbConfig } from '../config/schema.js';
+import { SUPPORTED_REVIEWER_MODELS, type CqbConfig } from '../config/schema.js';
 import type { DesktopController } from '../reviewer/clipboard.js';
 import { formatReviewForClipboard, routeReview } from '../reviewer/clipboard.js';
 import { createReviewEnvelope } from '../reviewer/validator.js';
@@ -8,13 +8,14 @@ import { evidenceFingerprint } from './evidence.js';
 import { transitionTask } from './state-machine.js';
 import { FileTaskStore } from './store.js';
 import { createTask, type TaskRecord, type ValidationResult } from './types.js';
-import { resolveAutomationPermissions } from '../automation/permissions.js';
+import { AUTOPILOT_CONSENT_STATEMENT, resolveAutomationPermissions } from '../automation/permissions.js';
 import { ShellVerificationRunner, type VerificationRunner } from '../verification/runner.js';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { redactText, redactValue } from '../logging/events.js';
 import { createBuiltInReviewerBinding } from '../setup/reviewer.js';
-import { updateReviewerBinding } from '../config/writer.js';
+import { updateAutomationMode, updateConsent, updateReviewerBinding, updateReviewerModel } from '../config/writer.js';
+import type { AutomationMode } from '../config/schema.js';
 
 export interface StatusInput { taskId?: string; goal: string; workspaceRoot: string; resume?: boolean }
 export interface ReportInput { changedFiles?: string[]; validation?: ValidationResult; diffInspected?: boolean; remainingRisks: string[] }
@@ -28,6 +29,39 @@ export class CqbService {
     private readonly verificationRunner: VerificationRunner = new ShellVerificationRunner(),
     private readonly configPath?: string,
   ) {}
+
+  settings() {
+    return {
+      mode: this.config.automation.mode,
+      auto_open: this.config.automation.autoOpen,
+      auto_focus: this.config.automation.autoFocus,
+      auto_paste: this.config.automation.autoPaste,
+      auto_send: this.config.automation.autoSend,
+      autopilot_consent_granted: this.config.automation.consent?.granted === true,
+      browser_provider: this.config.reviewer.browserProvider,
+      preferred_model: this.config.reviewer.preferredModel,
+      available_models: [...SUPPORTED_REVIEWER_MODELS],
+    };
+  }
+
+  async setAutomationMode(mode: AutomationMode, confirmAutopilot = false) {
+    if (!this.configPath) throw new Error('Automation mode changes are only available from the Codex MCP host');
+    if (mode === 'autopilot' && this.config.automation.consent?.granted !== true) {
+      if (!confirmAutopilot) throw new Error('Autopilot requires the explicit consent checkbox in the CQB settings panel');
+      const granted = await updateConsent(this.configPath, 'grant', AUTOPILOT_CONSENT_STATEMENT);
+      Object.assign(this.config.automation, granted.automation);
+    }
+    const updated = await updateAutomationMode(this.configPath, mode);
+    Object.assign(this.config.automation, updated.automation);
+    return this.settings();
+  }
+
+  async setReviewerModel(model: string) {
+    if (!this.configPath) throw new Error('Reviewer model changes are only available from the Codex MCP host');
+    const updated = await updateReviewerModel(this.configPath, model);
+    Object.assign(this.config.reviewer, updated.reviewer);
+    return this.settings();
+  }
 
   private async requireTask(taskId: string): Promise<TaskRecord> {
     const task = await this.store.load(taskId);
@@ -103,7 +137,7 @@ export class CqbService {
     let task = await this.requireTask(taskId);
     if (task.state !== 'ESCALATING') throw new Error(`Review request requires ESCALATING state, received ${task.state}`);
     task = transitionTask(task, 'PREPARING_REVIEW', 'Building compact review packet', this.now());
-    const packet = buildReviewPacket({ ...input, userInput: input.userInput ?? task.goal });
+    const packet = buildReviewPacket({ ...input, userInput: input.userInput ?? task.goal, preferredModel: this.config.reviewer.preferredModel });
     const envelope = createReviewEnvelope(task.id, packet.markdown, this.now());
     const automationDisabled = await this.store.isAutomationDisabled();
     const routeConfig = automationDisabled ? structuredClone(this.config) : this.config;

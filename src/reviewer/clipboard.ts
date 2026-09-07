@@ -36,16 +36,17 @@ export async function routeReview(task: TaskRecord, config: CqbConfig, desktop: 
     let boundConversation = false;
     try { boundConversation = new URL(config.reviewer.conversationUrl).protocol === 'https:' && new URL(config.reviewer.conversationUrl).hostname === 'chatgpt.com' && /^\/c\/[^/]+/.test(new URL(config.reviewer.conversationUrl).pathname); } catch {}
     if (config.automation.mode !== 'safe') return { outcome: 'permission-denied', message: 'Built-in Browser routing currently supports Safe mode only; use the local browser provider for Assisted or Autopilot.' };
+    const modelHint = `Use the preferred ChatGPT reviewer model "${config.reviewer.preferredModel}" when available; CQB records this preference but cannot verify or switch the active model.`;
     const browserAction: HostBrowserAction = {
       provider: 'builtin',
       conversationUrl: boundConversation ? config.reviewer.conversationUrl : 'https://chatgpt.com/',
       packet: outgoing,
       instruction: boundConversation
-        ? 'Use the in-app @Browser capability to open the conversation URL; do not use Chrome or Edge. Keep the packet available for user review and do not submit it without explicit user approval.'
-        : 'Use the in-app @Browser capability to open ChatGPT, sign in if needed, and create or select the dedicated reviewer conversation; do not use Chrome or Edge. Then call cqb_bind_reviewer with the confirmed /c/... URL before continuing. Do not submit the packet without explicit user approval.',
+        ? `Use the in-app @Browser capability to open the conversation URL; do not use Chrome or Edge. ${modelHint} Keep the packet available for user review and do not submit it without explicit user approval.`
+        : `Use the in-app @Browser capability to open ChatGPT, sign in if needed, and create or select the dedicated reviewer conversation; do not use Chrome or Edge. ${modelHint} Then call cqb_bind_reviewer with the confirmed /c/... URL before continuing. Do not submit the packet without explicit user approval.`,
       selectionHint: boundConversation
-        ? `Find the dedicated ChatGPT conversation titled or labeled "${config.reviewer.expectedWindowTitle}" in the in-app Browser and open the existing conversation at the configured URL.`
-        : `Search the in-app ChatGPT history for a dedicated conversation titled or labeled "${config.reviewer.expectedWindowTitle}" before creating anything new.`,
+        ? `Find the dedicated ChatGPT conversation titled or labeled "${config.reviewer.expectedWindowTitle}" in the in-app Browser and open the existing conversation at the configured URL. ${modelHint}`
+        : `Search the in-app ChatGPT history for a dedicated conversation titled or labeled "${config.reviewer.expectedWindowTitle}" before creating anything new. ${modelHint}`,
       ...(boundConversation ? {} : {
         setupRequired: true,
         creationPrompt: `If no dedicated reviewer conversation exists, create a new ChatGPT conversation named "${config.reviewer.expectedWindowTitle}". Ask the user to approve the creation if ChatGPT requests confirmation, then report the resulting /c/... URL to cqb_bind_reviewer.`,
